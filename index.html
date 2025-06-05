@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chinese Character Drop Challenge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start; /* Align to top for scroll */
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+            padding-top: 20px; /* Add padding for scroll */
+            padding-bottom: 20px;
+        }
+        #gameContainer {
+            background-color: #ffffff;
+            border-radius: 16px; /* More rounded */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12); /* Softer, larger shadow */
+            padding: 25px 30px;
+            text-align: center;
+            width: 90%;
+            max-width: 700px; /* Slightly wider */
+        }
+        canvas {
+            display: block;
+            margin: 15px auto;
+            background-color: #e9edf0; /* Slightly different canvas bg */
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+        }
+        .control-button, .speed-controls button, #loadVocabButton, #startGameButton, #resetGameButton {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 12px 20px; /* Larger padding */
+            margin: 8px 5px; /* Increased margin */
+            border-radius: 8px; /* More rounded buttons */
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600; /* Bolder text */
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .control-button:hover, .speed-controls button:hover, #loadVocabButton:hover, #startGameButton:hover, #resetGameButton:hover {
+            background-color: #357abd;
+            transform: translateY(-1px); /* Slight lift on hover */
+        }
+         #resetGameButton {
+            background-color: #e74c3c; /* Red for reset */
+        }
+        #resetGameButton:hover {
+            background-color: #c0392b;
+        }
+        input[type="text"], input[type="number"], textarea {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 5px 0 15px 0;
+            border-radius: 6px;
+            width: calc(100% - 22px); /* Full width with padding */
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        textarea {
+            min-height: 80px;
+            font-family: monospace;
+        }
+        label {
+            display: block;
+            text-align: left;
+            margin-top: 10px;
+            font-weight: 600;
+            color: #555;
+        }
+        #englishWordDisplay {
+            font-family: 'Inter', sans-serif;
+            font-size: 30px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        #feedbackMessage {
+            font-size: 22px;
+            font-weight: 600;
+            min-height: 35px;
+            margin-top: 15px;
+        }
+        .score-speed-info {
+            font-size: 18px;
+            color: #444;
+            margin-top: 15px;
+            font-weight: 500;
+        }
+        .chinese-char-canvas { /* Class for canvas text */
+            font-family: 'Noto Sans SC', sans-serif;
+            font-weight: 700;
+        }
+        #endGameSummary {
+            background-color: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        #endGameSummary h2 {
+            color: #4a90e2;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        #endGameSummary p {
+            font-size: 18px;
+            margin: 8px 0;
+        }
+        #highScoresBoard {
+            margin-top: 20px;
+        }
+        #highScoresBoard h3 {
+            font-size: 22px;
+            color: #333;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #4a90e2;
+            padding-bottom: 5px;
+        }
+        #highScoresBoard ul {
+            list-style: none;
+            padding: 0;
+        }
+        #highScoresBoard li {
+            background-color: #fff;
+            border: 1px solid #eee;
+            padding: 10px 15px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            font-size: 17px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #highScoresBoard li .score-name { font-weight: 600; color: #357abd; }
+        #highScoresBoard li .score-date { font-size: 0.9em; color: #777; }
+        #highScoresBoard li .score-value { font-weight: bold; color: #27ae60; }
+
+        .hidden { display: none; }
+        /* Message Box Styles - Re-using from previous */
+        .message-box-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .message-box-content { background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); text-align: center; max-width: 90%; width: 400px; }
+        .message-box-content h2 { margin-top: 0; color: #333; font-size:22px; }
+        .message-box-content p { color: #555; margin-bottom: 20px; font-size:16px;}
+        .message-box-button { background-color: #4a90e2; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .message-box-button:hover { background-color: #357abd; }
+
+        .setup-section, .gameplay-section, .postgame-section {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="gameContainer">
+        <h1 class="text-4xl font-bold mb-6 text-gray-800">Chinese Character Drop Challenge</h1>
+
+        <!-- Setup Section -->
+        <div id="setupSection" class="setup-section">
+            <label for="vocabInput">Paste Vocabulary (CSV: English,Chinese):</label>
+            <textarea id="vocabInput" placeholder="e.g., hello,你好&#10;goodbye,再见"></textarea>
+            <button id="loadVocabButton" class="control-button">Load Vocabulary</button>
+            <p id="vocabStatus" class="text-sm text-gray-600 mt-1 mb-3">Vocabulary items: 0</p>
+
+            <label for="playerName">Player Name:</label>
+            <input type="text" id="playerName" placeholder="Enter your name">
+
+            <label for="numWordsToReview">Number of Words to Review:</label>
+            <input type="number" id="numWordsToReview" value="10" min="1">
+            
+            <button id="startGameButton" class="control-button">Start Challenge!</button>
+        </div>
+
+        <!-- Gameplay Section -->
+        <div id="gameplaySection" class="gameplay-section hidden">
+            <div id="englishWordDisplay" class="mb-3 text-2xl font-semibold">English Word</div>
+            <canvas id="gameCanvas"></canvas>
+            <div id="feedbackMessage" class="mt-2 text-lg h-8"></div>
+            <div class="score-speed-info mb-2">
+                Score: <span id="scoreDisplay">0</span> | Speed: <span id="speedDisplay">1</span> | Words Left: <span id="wordsLeftDisplay">0</span>
+            </div>
+            <div class="speed-controls">
+                <button id="decreaseSpeedButton" class="control-button">- Speed</button>
+                <button id="increaseSpeedButton" class="control-button">+ Speed</button>
+            </div>
+             <button id="resetGameButton" class="control-button mt-3">End & Reset Game</button>
+        </div>
+        
+        <!-- Post-Game Section -->
+        <div id="endGameSummary" class="postgame-section hidden">
+            <h2 id="congratsMessage">🎉 Congratulations! 🎉</h2>
+            <p>Player: <span id="summaryPlayerName" class="font-semibold"></span></p>
+            <p>Date: <span id="summaryDate" class="font-semibold"></span></p>
+            <p>Final Score: <span id="summaryScore" class="font-semibold text-xl text-green-600"></span></p>
+            
+            <div id="highScoresBoard">
+                <h3>Top 3 Records</h3>
+                <ul id="highScoresList">
+                    <!-- Scores will be populated here -->
+                </ul>
+            </div>
+            <button id="playAgainButton" class="control-button mt-4">Play Again</button>
+        </div>
+    </div>
+
+    <!-- Custom Message Box -->
+    <div id="customMessageBoxOverlay" class="message-box-overlay hidden">
+        <div class="message-box-content">
+            <h2 id="messageBoxTitle">Message</h2>
+            <p id="messageBoxText">This is a message.</p>
+            <button id="messageBoxButton" class="message-box-button">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const englishWordDisplay = document.getElementById('englishWordDisplay');
+        const feedbackMessage = document.getElementById('feedbackMessage');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const speedDisplay = document.getElementById('speedDisplay');
+        const wordsLeftDisplay = document.getElementById('wordsLeftDisplay');
+
+        const vocabInput = document.getElementById('vocabInput');
+        const loadVocabButton = document.getElementById('loadVocabButton');
+        const vocabStatus = document.getElementById('vocabStatus');
+        const playerNameInput = document.getElementById('playerName');
+        const numWordsToReviewInput = document.getElementById('numWordsToReview');
+        const startGameButton = document.getElementById('startGameButton');
+        const resetGameButton = document.getElementById('resetGameButton');
+        const increaseSpeedButton = document.getElementById('increaseSpeedButton');
+        const decreaseSpeedButton = document.getElementById('decreaseSpeedButton');
+        
+        const setupSection = document.getElementById('setupSection');
+        const gameplaySection = document.getElementById('gameplaySection');
+        const endGameSummary = document.getElementById('endGameSummary');
+        const congratsMessage = document.getElementById('congratsMessage');
+        const summaryPlayerName = document.getElementById('summaryPlayerName');
+        const summaryDate = document.getElementById('summaryDate');
+        const summaryScore = document.getElementById('summaryScore');
+        const highScoresList = document.getElementById('highScoresList');
+        const playAgainButton = document.getElementById('playAgainButton');
+
+        const customMessageBoxOverlay = document.getElementById('customMessageBoxOverlay');
+        const messageBoxTitle = document.getElementById('messageBoxTitle');
+        const messageBoxText = document.getElementById('messageBoxText');
+        const messageBoxButton = document.getElementById('messageBoxButton');
+
+        // --- Game State & Configuration ---
+        let mainVocabulary = [];
+        let sessionVocabulary = [];
+        let currentWord = null;
+        let fallingWords = []; // {text: "字", x: 0, y: 0, isCorrect: false, color: '#333', id: 0/1}
+        let score = 0;
+        let dropSpeed = 1;
+        let gameLoopId = null;
+        let isGameActive = false;
+        let wordsReviewedCount = 0;
+        let totalWordsInSession = 0;
+        let currentPlayerName = "Player";
+
+        const WORD_FONT_SIZE = 38; 
+        const WORD_PADDING = 25; 
+        const HIGH_SCORES_KEY = 'chineseGameHighScores';
+
+        // --- Sound Effects (Tone.js) ---
+        let correctSound, incorrectSound, missSound;
+        let soundsReady = false;
+
+        function initializeSounds() {
+            if (typeof Tone !== 'undefined') {
+                correctSound = new Tone.Synth({
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.05, release: 0.2 }
+                }).toDestination();
+
+                incorrectSound = new Tone.Synth({
+                    oscillator: { type: "square" },
+                    envelope: { attack: 0.02, decay: 0.2, sustain: 0.01, release: 0.2 },
+                    volume: -10 
+                }).toDestination();
+                
+                missSound = new Tone.NoiseSynth({
+                    noise: { type: "pink"},
+                    envelope: { attack: 0.005, decay: 0.1, sustain: 0}
+                }).toDestination();
+
+                soundsReady = true;
+                console.log("Tone.js sounds initialized.");
+            } else {
+                console.error("Tone.js not loaded. Sound effects will be unavailable.");
+                soundsReady = false;
+            }
+        }
+        initializeSounds();
+
+        // --- Speech Synthesis ---
+        function speakChineseWord(textToSpeak) {
+            if ('speechSynthesis' in window) {
+                // Cancel any ongoing speech before starting a new one
+                window.speechSynthesis.cancel();
+                
+                const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                utterance.lang = 'zh-CN'; // Mandarin Chinese (China)
+                utterance.rate = 0.7; // Slower speech rate (default 1, previous 0.9)
+                utterance.pitch = 1; // Default is 1
+                
+                window.speechSynthesis.speak(utterance);
+            } else {
+                console.warn("Speech synthesis not supported in this browser.");
+            }
+        }
+
+
+        // --- Utility Functions ---
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function showMessage(title, text, onOk) {
+            messageBoxTitle.textContent = title;
+            messageBoxText.textContent = text;
+            customMessageBoxOverlay.classList.remove('hidden');
+            messageBoxButton.onclick = () => {
+                customMessageBoxOverlay.classList.add('hidden');
+                if (onOk) onOk();
+            };
+        }
+        
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // --- Canvas Setup ---
+        function resizeCanvas() {
+            const gameContainerWidth = document.getElementById('gameContainer').offsetWidth;
+            canvas.width = Math.min(gameContainerWidth - 60, 600); 
+            canvas.height = 450; 
+            if (isGameActive && fallingWords.length > 0) {
+                 draw(); 
+            } else if (!isGameActive && gameplaySection.classList.contains('hidden')) {
+            } else if (!isGameActive) {
+                 drawInitialCanvasMessage("Game Paused. Click word or use keys.");
+            }
+        }
+
+        function drawInitialCanvasMessage(message) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#7f8c8d';
+            ctx.font = "20px 'Inter', sans-serif";
+            ctx.textAlign = 'center';
+            ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+        }
+
+        // --- Vocabulary Management ---
+        loadVocabButton.addEventListener('click', () => {
+            const csvData = vocabInput.value.trim();
+            if (!csvData) {
+                showMessage("Vocabulary Error", "Textarea is empty. Please paste your vocabulary.");
+                return;
+            }
+            try {
+                const lines = csvData.split('\n');
+                const newVocab = [];
+                lines.forEach(line => {
+                    const parts = line.split(',');
+                    if (parts.length === 2) {
+                        const english = parts[0].trim();
+                        const chinese = parts[1].trim();
+                        if (english && chinese) {
+                            newVocab.push({ english, chinese });
+                        }
+                    }
+                });
+                if (newVocab.length === 0) {
+                    throw new Error("No valid word pairs found. Ensure format is 'English,Chinese' per line.");
+                }
+                mainVocabulary = newVocab;
+                vocabStatus.textContent = `Vocabulary items: ${mainVocabulary.length}`;
+                showMessage("Success", `Loaded ${mainVocabulary.length} vocabulary items!`);
+                numWordsToReviewInput.max = mainVocabulary.length; 
+            } catch (error) {
+                showMessage("Vocabulary Error", `Failed to parse vocabulary: ${error.message}`);
+                mainVocabulary = [];
+                vocabStatus.textContent = `Vocabulary items: 0`;
+            }
+        });
+
+        // --- Game Logic ---
+        function startGame() {
+            if (typeof Tone !== 'undefined' && Tone.context.state !== 'running') {
+                Tone.start().then(() => {
+                    console.log("Audio context started by user gesture.");
+                    if (!soundsReady) initializeSounds(); 
+                    proceedWithGameStart();
+                }).catch(e => {
+                    console.error("Error starting Tone.js audio context:", e);
+                    proceedWithGameStart(); 
+                });
+            } else {
+                 if (!soundsReady && typeof Tone !== 'undefined') initializeSounds();
+                proceedWithGameStart();
+            }
+        }
+        
+        function proceedWithGameStart() {
+            if (mainVocabulary.length === 0) {
+                showMessage("Game Start Error", "Please load your vocabulary first.");
+                return;
+            }
+            currentPlayerName = playerNameInput.value.trim() || "Anonymous Player";
+            totalWordsInSession = parseInt(numWordsToReviewInput.value, 10);
+
+            if (isNaN(totalWordsInSession) || totalWordsInSession <= 0) {
+                showMessage("Game Start Error", "Please enter a valid number of words to review.");
+                return;
+            }
+            if (totalWordsInSession > mainVocabulary.length) {
+                showMessage("Game Start Error", `Requested words (${totalWordsInSession}) exceed available vocabulary (${mainVocabulary.length}). Please adjust or load more words.`);
+                return;
+            }
+
+            sessionVocabulary = [...mainVocabulary]; 
+            shuffleArray(sessionVocabulary); 
+            sessionVocabulary = sessionVocabulary.slice(0, totalWordsInSession); 
+
+            wordsReviewedCount = 0;
+            score = 0;
+            scoreDisplay.textContent = score;
+            wordsLeftDisplay.textContent = totalWordsInSession;
+            feedbackMessage.textContent = "";
+            
+            setupSection.classList.add('hidden');
+            gameplaySection.classList.remove('hidden');
+            endGameSummary.classList.add('hidden');
+            
+            isGameActive = true;
+            if (selectNewWord()) {
+                gameLoop();
+            } else { 
+                endCurrentGame("Error starting game session.");
+            }
+        }
+
+
+        function selectNewWord() {
+            if (wordsReviewedCount >= totalWordsInSession || sessionVocabulary.length === 0) {
+                endCurrentGame();
+                return false;
+            }
+
+            currentWord = sessionVocabulary.pop(); 
+            englishWordDisplay.textContent = currentWord.english;
+            spawnFallingWords();
+            return true;
+        }
+
+        function spawnFallingWords() {
+            fallingWords = [];
+            const correctChinese = currentWord.chinese;
+            let distractorChinese = "";
+            
+            if (mainVocabulary.length > 1) { 
+                do {
+                    const distractorWordEntry = mainVocabulary[getRandomInt(0, mainVocabulary.length - 1)];
+                    distractorChinese = distractorWordEntry.chinese;
+                } while (distractorChinese === correctChinese);
+            } else {
+                distractorChinese = "错"; 
+            }
+
+            const positions = [canvas.width * 0.30, canvas.width * 0.70]; 
+            const isCorrectFirst = Math.random() < 0.5;
+
+            const word1 = {
+                text: isCorrectFirst ? correctChinese : distractorChinese,
+                x: positions[0],
+                y: WORD_FONT_SIZE,
+                isCorrect: isCorrectFirst,
+                color: '#2c3e50',
+                id: 0 
+            };
+            const word2 = {
+                text: isCorrectFirst ? distractorChinese : correctChinese,
+                x: positions[1],
+                y: WORD_FONT_SIZE,
+                isCorrect: !isCorrectFirst,
+                color: '#2c3e50',
+                id: 1 
+            };
+            fallingWords.push(word1, word2);
+        }
+
+        function updateFallingWords() {
+            let wordHitBottomThisTurn = false;
+            for (let i = fallingWords.length - 1; i >= 0; i--) {
+                const word = fallingWords[i];
+                word.y += dropSpeed;
+
+                if (word.y > canvas.height + WORD_PADDING) {
+                    if (word.isCorrect) {
+                        feedbackMessage.textContent = `Missed! It was "${word.text}".`;
+                        feedbackMessage.style.color = '#e74c3c';
+                        if (soundsReady && missSound) {
+                            missSound.triggerAttackRelease("8n", Tone.now());
+                        }
+                    }
+                    fallingWords.splice(i, 1);
+                    wordHitBottomThisTurn = true;
+                }
+            }
+
+            if (wordHitBottomThisTurn && fallingWords.length === 0) { 
+                wordsReviewedCount++;
+                wordsLeftDisplay.textContent = totalWordsInSession - wordsReviewedCount;
+                setTimeout(() => {
+                    if (isGameActive) selectNewWord();
+                }, 1200);
+            }
+        }
+
+        function drawFallingWords() {
+            fallingWords.forEach(word => {
+                ctx.fillStyle = word.color;
+                ctx.font = `${WORD_FONT_SIZE}px 'Noto Sans SC', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText(word.text, word.x, word.y);
+            });
+        }
+
+        function draw() {
+            if (!isGameActive && fallingWords.length === 0) return; 
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if(isGameActive) updateFallingWords(); 
+            drawFallingWords();
+        }
+
+        function gameLoop() {
+            if (!isGameActive && fallingWords.length === 0 && wordsReviewedCount >= totalWordsInSession) { 
+                cancelAnimationFrame(gameLoopId);
+                return;
+            }
+            draw();
+            if (isGameActive || fallingWords.length > 0) { 
+                 gameLoopId = requestAnimationFrame(gameLoop);
+            }
+        }
+        
+        function processAnswer(selectedWord) {
+            if (!isGameActive) return; 
+
+            isGameActive = false; 
+            cancelAnimationFrame(gameLoopId); 
+
+            wordsReviewedCount++;
+            wordsLeftDisplay.textContent = totalWordsInSession - wordsReviewedCount;
+
+            if (selectedWord.isCorrect) {
+                score++;
+                feedbackMessage.textContent = "Correct! 太棒了!";
+                feedbackMessage.style.color = '#2ecc71';
+                selectedWord.color = '#2ecc71';
+                if (soundsReady && correctSound) {
+                    correctSound.triggerAttackRelease("C5", "8n", Tone.now()); 
+                    correctSound.triggerAttackRelease("G5", "8n", Tone.now() + 0.15); 
+                    setTimeout(() => speakChineseWord(currentWord.chinese), 300); 
+                } else {
+                    speakChineseWord(currentWord.chinese);
+                }
+            } else {
+                feedbackMessage.textContent = `Incorrect. It's "${currentWord.chinese}".`;
+                feedbackMessage.style.color = '#e74c3c';
+                selectedWord.color = '#e74c3c';
+                fallingWords.forEach(fw => { if (fw.isCorrect) fw.color = '#27ae60'; });
+                if (soundsReady && incorrectSound) {
+                    incorrectSound.triggerAttackRelease("C3", "4n", Tone.now()); 
+                }
+            }
+            scoreDisplay.textContent = score;
+            draw(); 
+
+            setTimeout(() => {
+                if (wordsReviewedCount < totalWordsInSession) {
+                    isGameActive = true; 
+                    if (selectNewWord()) {
+                         gameLoop(); 
+                    }
+                } else {
+                    endCurrentGame();
+                }
+            }, 1500); 
+        }
+
+        function handleWordClick(event) {
+            if (!isGameActive || fallingWords.length === 0) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const clickY = event.clientY - rect.top;
+
+            for (let i = 0; i < fallingWords.length; i++) {
+                const word = fallingWords[i];
+                const textMetrics = ctx.measureText(word.text);
+                const textWidth = textMetrics.width;
+                const wordLeft = word.x - textWidth / 2 - WORD_PADDING / 2;
+                const wordRight = word.x + textWidth / 2 + WORD_PADDING / 2;
+                const wordTop = word.y - WORD_FONT_SIZE;
+                const wordBottom = word.y + WORD_PADDING / 2;
+
+                if (clickX >= wordLeft && clickX <= wordRight && clickY >= wordTop && clickY <= wordBottom) {
+                    processAnswer(word);
+                    break; 
+                }
+            }
+        }
+        
+        function handleKeyPress(event) {
+            if (!isGameActive || fallingWords.length === 0) return;
+
+            if (event.key === '1' && fallingWords.length > 0) {
+                const targetWord = fallingWords.find(w => w.id === 0) || fallingWords[0]; 
+                if(targetWord) processAnswer(targetWord);
+            } else if (event.key === '2' && fallingWords.length > 1) {
+                 const targetWord = fallingWords.find(w => w.id === 1) || fallingWords[1];
+                if(targetWord) processAnswer(targetWord);
+            }
+        }
+
+        function endCurrentGame(optionalMessage) {
+            isGameActive = false;
+            cancelAnimationFrame(gameLoopId);
+            fallingWords = []; 
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            window.speechSynthesis.cancel(); 
+
+            gameplaySection.classList.add('hidden');
+            endGameSummary.classList.remove('hidden');
+
+            const today = new Date();
+            const dateString = today.toLocaleDateString();
+            
+            if(optionalMessage){
+                 congratsMessage.textContent = "Game Over";
+                 summaryPlayerName.textContent = currentPlayerName;
+                 summaryDate.textContent = dateString;
+                 summaryScore.textContent = `${score} (${optionalMessage})`;
+            } else {
+                congratsMessage.textContent = score > totalWordsInSession * 0.7 ? "🎉 Excellent! 🎉" : (score > totalWordsInSession * 0.4 ? "👍 Good Job! 👍" : "💪 Keep Practicing! 💪");
+                summaryPlayerName.textContent = currentPlayerName;
+                summaryDate.textContent = dateString;
+                summaryScore.textContent = `${score} / ${totalWordsInSession}`;
+                saveHighScore(currentPlayerName, dateString, score, totalWordsInSession);
+            }
+            displayHighScores();
+        }
+        
+        function resetGameFull() {
+            cancelAnimationFrame(gameLoopId);
+            isGameActive = false;
+            fallingWords = [];
+            currentWord = null;
+            score = 0;
+            dropSpeed = 1; 
+            wordsReviewedCount = 0;
+            totalWordsInSession = 0;
+            sessionVocabulary = [];
+            window.speechSynthesis.cancel(); 
+            
+            scoreDisplay.textContent = score;
+            speedDisplay.textContent = dropSpeed.toFixed(1);
+            englishWordDisplay.textContent = "English Word";
+            feedbackMessage.textContent = "";
+            wordsLeftDisplay.textContent = "0";
+            
+            gameplaySection.classList.add('hidden');
+            endGameSummary.classList.add('hidden');
+            setupSection.classList.remove('hidden'); 
+            
+            drawInitialCanvasMessage(""); 
+            resizeCanvas(); 
+        }
+
+        // --- High Score Logic ---
+        function saveHighScore(name, date, currentScore, wordsInSession) {
+            const newScoreEntry = { name, date, score: currentScore, words: wordsInSession, percentage: ((currentScore/wordsInSession)*100).toFixed(1) };
+            let highScores = JSON.parse(localStorage.getItem(HIGH_SCORES_KEY)) || [];
+            highScores.push(newScoreEntry);
+            highScores.sort((a, b) => {
+                if (b.score === a.score) {
+                    return b.percentage - a.percentage;
+                }
+                return b.score - a.score;
+            });
+            highScores = highScores.slice(0, 3); 
+            localStorage.setItem(HIGH_SCORES_KEY, JSON.stringify(highScores));
+        }
+
+        function displayHighScores() {
+            const highScores = JSON.parse(localStorage.getItem(HIGH_SCORES_KEY)) || [];
+            highScoresList.innerHTML = ""; 
+            if (highScores.length === 0) {
+                highScoresList.innerHTML = "<li>No records yet. Be the first!</li>";
+                return;
+            }
+            highScores.forEach(entry => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="score-name">${entry.name}</span>
+                    <span class="score-date">${entry.date}</span>
+                    <span class="score-value">${entry.score}/${entry.words} (${entry.percentage}%)</span>
+                `;
+                highScoresList.appendChild(li);
+            });
+        }
+
+        // --- Event Listeners ---
+        startGameButton.addEventListener('click', startGame); 
+        
+        resetGameButton.addEventListener('click', () => {
+            showMessage("Confirm", "Are you sure you want to end this session and reset?", () => {
+                 endCurrentGame("Session ended early."); 
+            });
+        });
+        playAgainButton.addEventListener('click', resetGameFull);
+
+        increaseSpeedButton.addEventListener('click', () => {
+            dropSpeed = Math.min(dropSpeed + 0.5, 10);
+            speedDisplay.textContent = dropSpeed.toFixed(1);
+        });
+        decreaseSpeedButton.addEventListener('click', () => {
+            dropSpeed = Math.max(0.5, dropSpeed - 0.5);
+            speedDisplay.textContent = dropSpeed.toFixed(1);
+        });
+
+        canvas.addEventListener('click', handleWordClick);
+        window.addEventListener('keydown', handleKeyPress); 
+        window.addEventListener('resize', resizeCanvas);
+        messageBoxButton.addEventListener('click', () => { 
+            customMessageBoxOverlay.classList.add('hidden');
+        });
+
+        // --- Initial Setup ---
+        resizeCanvas();
+        displayHighScores(); 
+        numWordsToReviewInput.max = mainVocabulary.length > 0 ? mainVocabulary.length : 100; 
+    </script>
+</body>
+</html>
